@@ -8,11 +8,12 @@ interface Game {
 
 interface InputSelectProps {
     games: Game[];
+    onSelectOption: (value: string) => void;
 }
 
-export function InputSelect({ games }: InputSelectProps) {
+export function InputSelect({ games, onSelectOption }: InputSelectProps) {
     return (
-        <Select.Root>
+        <Select.Root onValueChange={onSelectOption}>
             <Select.Trigger
                 className="bg-zinc-900 px-3 py-3 rounded flex items-center justify-between"
                 aria-label="Games"
@@ -38,7 +39,7 @@ export function InputSelect({ games }: InputSelectProps) {
                                     <Select.Item
                                         className="text-md text-zinc-300 flex items-center relative h-8 px-1 hover:bg-red-400"
                                         key={game.id}
-                                        value={game.title}>
+                                        value={game.id}>
                                         <Select.ItemText className="">
                                             {game.title}
                                         </Select.ItemText>

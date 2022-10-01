@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, FormEvent } from "react";
 import { Check, GameController } from "phosphor-react";
 import * as Dialog from "@radix-ui/react-dialog";
 import * as Checkbox from "@radix-ui/react-checkbox";
+import axios from "axios";
 
 import { Input } from "./Form/Input";
 import { InputSelect } from "./Form/Select";
@@ -23,17 +24,59 @@ export function CreateAdModal() {
 
     // TODO get this from context
     const [games, setGames] = useState<Game[]>([]);
-    const [weekDays, setWeekDays] = useState<string[]>([]);
+    const [selectedWeekDays, setSelectedWeekDays] = useState<string[]>([]);
+    const [selectedGame, setSelectedGame] = useState<string>();
+    const [useVoiceChannel, setUseVoiceChannel] = useState(false);
 
     useEffect(() => {
         async function loadGames() {
-            fetch("http://localhost:3333/games")
-                .then((response) => response.json())
-                .then((data) => setGames(data));
+            axios("http://localhost:3333/games").then((response) =>
+                setGames(response.data)
+            );
         }
 
         loadGames();
     }, []);
+
+    async function handleCreateAd(event: FormEvent) {
+        event.preventDefault();
+
+        const formData = new FormData(event.target as HTMLFormElement);
+        const data = Object.fromEntries(formData);
+
+        // TODO Add validations
+        if (!selectedGame && !data.name) {
+            return;
+        }
+
+        try {
+            await axios.post(
+                `http://localhost:3333/games/${selectedGame}/ads`,
+                {
+                    name: data.name,
+                    yearsPlaying: Number(data.yearsPlaying),
+                    discord: data.discord,
+                    weekDays: selectedWeekDays.map(Number),
+                    hourStart: data.hourStart,
+                    hourEnd: data.hourEnd,
+                    useVoiceChannel: useVoiceChannel,
+                }
+            );
+
+            alert("Anúcio criado com sucesso");
+        } catch (error) {
+            console.log(error);
+            alert("Erro ao criar Anúcio");
+        }
+    }
+
+    function handleCheckUseVoiceChannel(checked: Boolean | "indeterminate") {
+        if (checked === true) {
+            setUseVoiceChannel(true);
+        } else {
+            setUseVoiceChannel(false);
+        }
+    }
 
     return (
         <Dialog.Portal>
@@ -44,18 +87,25 @@ export function CreateAdModal() {
                     Publique um anúncio
                 </Dialog.Title>
 
-                <form className="mt-8 flex flex-col gap-4">
+                <form
+                    onSubmit={handleCreateAd}
+                    className="mt-8 flex flex-col gap-4"
+                >
                     <div className="flex flex-col gap-2">
                         <label className="font-semibold" htmlFor="game">
                             Qual o game?
                         </label>
 
-                        <InputSelect games={games} />
+                        <InputSelect
+                            games={games}
+                            onSelectOption={setSelectedGame}
+                        />
                     </div>
 
                     <div className="flex flex-col gap-2">
                         <label htmlFor="name">Seu nome (ou nickname)?</label>
                         <Input
+                            name="name"
                             id="name"
                             type="text"
                             placeholder="Como te chamam dentro do game?"
@@ -68,6 +118,7 @@ export function CreateAdModal() {
                                 Joga há quanto tempo?
                             </label>
                             <Input
+                                name="yearsPlaying"
                                 id="yearsPlaying"
                                 type="number"
                                 placeholder="Tudo bem ser ZERO"
@@ -77,6 +128,7 @@ export function CreateAdModal() {
                         <div className="flex flex-col gap-2">
                             <label htmlFor="discord">Qual o seu discord?</label>
                             <Input
+                                name="discord"
                                 id="discord"
                                 type="text"
                                 placeholder="Usuário#0000"
@@ -92,8 +144,8 @@ export function CreateAdModal() {
 
                             <ToggleGroup
                                 toggles={daysOfWeek}
-                                values={weekDays}
-                                onValueChange={setWeekDays}
+                                values={selectedWeekDays}
+                                onValueChange={setSelectedWeekDays}
                             />
                         </div>
 
@@ -103,11 +155,13 @@ export function CreateAdModal() {
                             </label>
                             <div className="grid grid-cols-2 gap-2">
                                 <Input
+                                    name="hourStart"
                                     id="hourStart"
                                     type="time"
                                     placeholder="De"
                                 />
                                 <Input
+                                    name="hourEnd"
                                     id="hourEnd"
                                     type="time"
                                     placeholder="Até"
@@ -117,7 +171,11 @@ export function CreateAdModal() {
                     </div>
 
                     <label className="mt-2 flex gap-2 text-sm items-center">
-                        <Checkbox.Root className="w-6 h-6 p-1 rounded bg-zinc-900">
+                        <Checkbox.Root
+                            checked={useVoiceChannel}
+                            className="w-6 h-6 p-1 rounded bg-zinc-900"
+                            onCheckedChange={handleCheckUseVoiceChannel}
+                        >
                             <Checkbox.Indicator>
                                 <Check className="w-4 h-4 text-emerald-400" />
                             </Checkbox.Indicator>
